@@ -1,6 +1,5 @@
 package com.autorent;
 
-import com.autorent.application.PasoTraza;
 import com.autorent.application.port.output.*;
 import com.autorent.application.port.input.AlquilerService;
 import com.autorent.application.usecase.AlquilerUseCase;
@@ -32,14 +31,10 @@ class AlquilerUseCaseTest {
             public Optional<Cliente> buscarPorId(Long id) {
                 return id.equals(1L) ? Optional.of(cliente) : Optional.empty();
             }
-            public boolean existePorDocumento(String doc) { return doc.equals("123"); }
+            public Optional<Cliente> buscarPorDocumento(String doc) { return Optional.empty(); }
+            public Optional<Cliente> buscarPorEmail(String email) { return Optional.empty(); }
         };
-        TrazaPort traza = new TrazaPort() {
-            private final List<PasoTraza> pasos = new ArrayList<>();
-            public void registrar(String nodo, String detalle) { pasos.add(new PasoTraza(nodo, detalle)); }
-            public List<PasoTraza> obtenerPasos() { return pasos; }
-        };
-        servicio = new AlquilerUseCase(alquileres, autos, clientes, traza);
+        servicio = new AlquilerUseCase(alquileres, autos, clientes);
     }
 
     @Test
@@ -81,6 +76,7 @@ class AlquilerUseCaseTest {
         final Map<Long, Auto> datos = new HashMap<>();
         public Auto guardar(Auto auto) { datos.put(auto.getId(), auto); return auto; }
         public Optional<Auto> buscarPorId(Long id) { return Optional.ofNullable(datos.get(id)); }
+        public Optional<Auto> buscarPorPlaca(String placa) { return Optional.empty(); }
         public List<Auto> buscarDisponibles() { return datos.values().stream().filter(a -> a.getEstado() == Auto.EstadoAuto.DISPONIBLE).toList(); }
         public List<Auto> buscarTodos() { return new ArrayList<>(datos.values()); }
     }
@@ -93,5 +89,6 @@ class AlquilerUseCaseTest {
             return alquiler;
         }
         public Optional<Alquiler> buscarPorId(Long id) { return Optional.ofNullable(datos.get(id)); }
+        public boolean existeActivoPorClienteId(Long clienteId) { return false; }
     }
 }

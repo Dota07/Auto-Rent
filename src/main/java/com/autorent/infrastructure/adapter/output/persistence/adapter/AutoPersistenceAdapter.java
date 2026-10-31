@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.autorent.application.port.output.AutoRepositoryPort;
-import com.autorent.application.port.output.TrazaPort;
 import com.autorent.domain.model.Auto;
 import com.autorent.infrastructure.adapter.output.persistence.entity.AutoEntity;
 import com.autorent.infrastructure.adapter.output.persistence.repository.AutoJpaRepository;
@@ -16,17 +15,15 @@ import com.autorent.infrastructure.adapter.output.persistence.repository.AutoJpa
 public class AutoPersistenceAdapter implements AutoRepositoryPort {
 
     private final AutoJpaRepository autoJpaRepository;
-    private final TrazaPort traza;
 
-    public AutoPersistenceAdapter(AutoJpaRepository autoJpaRepository, TrazaPort traza) {
+    public AutoPersistenceAdapter(AutoJpaRepository autoJpaRepository) {
         this.autoJpaRepository = autoJpaRepository;
-        this.traza = traza;
     }
 
     @Override
     public Auto guardar(Auto auto) {
-        traza.registrar("node-port-out", "AutoRepositoryPort.guardar");
-        traza.registrar("node-adapter-out", "AutoPersistenceAdapter: guardar auto con JPA/H2");
+
+
         AutoEntity entity = toEntity(auto);
         AutoEntity savedEntity = autoJpaRepository.save(entity);
         return toDomain(savedEntity);
@@ -34,9 +31,14 @@ public class AutoPersistenceAdapter implements AutoRepositoryPort {
 
     @Override
     public Optional<Auto> buscarPorId(Long id) {
-        traza.registrar("node-port-out", "AutoRepositoryPort.buscarPorId");
-        traza.registrar("node-adapter-out", "AutoPersistenceAdapter: consultar auto en H2");
+
+
         return autoJpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Auto> buscarPorPlaca(String placa) {
+        return autoJpaRepository.findByPlacaIgnoreCase(placa).map(this::toDomain);
     }
 
     @Override

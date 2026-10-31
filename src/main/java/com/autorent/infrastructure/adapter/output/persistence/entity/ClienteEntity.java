@@ -13,6 +13,7 @@ public class ClienteEntity {
     @Column(unique = true)
     private String documento;
     private String telefono;
+    @Column(unique = true)
     private String email;
 
     public ClienteEntity() {}

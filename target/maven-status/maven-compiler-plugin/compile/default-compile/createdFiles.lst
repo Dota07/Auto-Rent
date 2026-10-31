@@ -26,14 +26,12 @@ com\autorent\infrastructure\adapter\input\rest\AutoController.class
 com\autorent\domain\exception\AutoNoEncontradoException.class
 com\autorent\infrastructure\adapter\input\rest\AlquilerController.class
 com\autorent\domain\model\Auto.class
-com\autorent\application\port\output\TrazaPort.class
 com\autorent\application\usecase\AlquilerUseCase.class
-com\autorent\infrastructure\config\TrazaBackend.class
 com\autorent\infrastructure\adapter\output\persistence\repository\ClienteJpaRepository.class
 com\autorent\domain\model\Alquiler.class
 com\autorent\domain\exception\AlquilerNoEncontradoException.class
+com\autorent\infrastructure\adapter\input\rest\AutoController$EstadoRequest.class
 com\autorent\infrastructure\adapter\output\persistence\entity\AlquilerEntity$EstadoAlquilerEntity.class
 com\autorent\domain\model\Auto$EstadoAuto.class
 com\autorent\infrastructure\adapter\output\persistence\adapter\AutoPersistenceAdapter.class
-com\autorent\application\PasoTraza.class
 com\autorent\infrastructure\adapter\output\persistence\repository\AutoJpaRepository.class

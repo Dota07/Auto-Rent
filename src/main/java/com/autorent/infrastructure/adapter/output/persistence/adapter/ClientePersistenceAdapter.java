@@ -1,7 +1,6 @@
 package com.autorent.infrastructure.adapter.output.persistence.adapter;
 
 import com.autorent.application.port.output.ClienteRepositoryPort;
-import com.autorent.application.port.output.TrazaPort;
 import com.autorent.domain.model.Cliente;
 import com.autorent.infrastructure.adapter.output.persistence.entity.ClienteEntity;
 import com.autorent.infrastructure.adapter.output.persistence.repository.ClienteJpaRepository;
@@ -12,17 +11,15 @@ import java.util.Optional;
 public class ClientePersistenceAdapter implements ClienteRepositoryPort {
 
     private final ClienteJpaRepository repository;
-    private final TrazaPort traza;
 
-    public ClientePersistenceAdapter(ClienteJpaRepository repository, TrazaPort traza) {
+    public ClientePersistenceAdapter(ClienteJpaRepository repository) {
         this.repository = repository;
-        this.traza = traza;
     }
 
     @Override
     public Cliente guardar(Cliente cliente) {
-        traza.registrar("node-port-out", "ClienteRepositoryPort.guardar");
-        traza.registrar("node-adapter-out", "ClientePersistenceAdapter: guardar cliente en H2");
+
+
         ClienteEntity entity = new ClienteEntity();
         entity.setId(cliente.getId());
         entity.setNombre(cliente.getNombre());
@@ -37,16 +34,19 @@ public class ClientePersistenceAdapter implements ClienteRepositoryPort {
 
     @Override
     public Optional<Cliente> buscarPorId(Long id) {
-        traza.registrar("node-port-out", "ClienteRepositoryPort.buscarPorId");
-        traza.registrar("node-adapter-out", "ClientePersistenceAdapter: consultar cliente en H2");
+
+
         return repository.findById(id).map(this::toDomain);
     }
 
     @Override
-    public boolean existePorDocumento(String documento) {
-        traza.registrar("node-port-out", "ClienteRepositoryPort.existePorDocumento");
-        traza.registrar("node-adapter-out", "ClientePersistenceAdapter: consultar documento en H2");
-        return repository.existsByDocumento(documento);
+    public Optional<Cliente> buscarPorDocumento(String documento) {
+        return repository.findByDocumento(documento).map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Cliente> buscarPorEmail(String email) {
+        return repository.findByEmailIgnoreCase(email).map(this::toDomain);
     }
 
     private Cliente toDomain(ClienteEntity entity) {

@@ -1,7 +1,6 @@
 package com.autorent.infrastructure.adapter.output.persistence.adapter;
 
 import com.autorent.application.port.output.AlquilerRepositoryPort;
-import com.autorent.application.port.output.TrazaPort;
 import com.autorent.domain.model.Alquiler;
 import com.autorent.infrastructure.adapter.output.persistence.entity.AlquilerEntity;
 import com.autorent.infrastructure.adapter.output.persistence.repository.AlquilerJpaRepository;
@@ -12,17 +11,15 @@ import java.util.Optional;
 public class AlquilerPersistenceAdapter implements AlquilerRepositoryPort {
 
     private final AlquilerJpaRepository repository;
-    private final TrazaPort traza;
 
-    public AlquilerPersistenceAdapter(AlquilerJpaRepository repository, TrazaPort traza) {
+    public AlquilerPersistenceAdapter(AlquilerJpaRepository repository) {
         this.repository = repository;
-        this.traza = traza;
     }
 
     @Override
     public Alquiler guardar(Alquiler alquiler) {
-        traza.registrar("node-port-out", "AlquilerRepositoryPort.guardar");
-        traza.registrar("node-adapter-out", "AlquilerPersistenceAdapter: guardar alquiler con JPA/H2");
+
+
         AlquilerEntity entity = new AlquilerEntity();
         entity.setId(alquiler.getId());
         entity.setClienteId(alquiler.getClienteId());
@@ -42,9 +39,14 @@ public class AlquilerPersistenceAdapter implements AlquilerRepositoryPort {
 
     @Override
     public Optional<Alquiler> buscarPorId(Long id) {
-        traza.registrar("node-port-out", "AlquilerRepositoryPort.buscarPorId");
-        traza.registrar("node-adapter-out", "AlquilerPersistenceAdapter: consultar alquiler en H2");
+
+
         return repository.findById(id).map(this::toDomain);
+    }
+
+    @Override
+    public boolean existeActivoPorClienteId(Long clienteId) {
+        return repository.existsByClienteIdAndEstado(clienteId, AlquilerEntity.EstadoAlquilerEntity.ACTIVO);
     }
 
     private Alquiler toDomain(AlquilerEntity entity) {

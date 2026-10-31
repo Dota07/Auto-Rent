@@ -1,33 +1,23 @@
 package com.autorent.infrastructure.adapter.input.rest;
 
 import com.autorent.application.port.input.AlquilerService;
-import com.autorent.application.port.output.TrazaPort;
 import com.autorent.domain.model.Alquiler;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/alquileres")
 public class AlquilerController {
     private final AlquilerService alquilerService;
-    private final TrazaPort traza;
 
-    public AlquilerController(AlquilerService alquilerService, TrazaPort traza) {
+    public AlquilerController(AlquilerService alquilerService) {
         this.alquilerService = alquilerService;
-        this.traza = traza;
     }
 
     @PostMapping
-    public ResponseEntity<?> crearAlquiler(@RequestBody AlquilerRequest request,
-                                            @RequestParam(name = "traza", defaultValue = "false") boolean traza) {
-        this.traza.registrar("node-adapter-in", "AlquilerController: POST /api/alquileres recibido");
+    public ResponseEntity<Alquiler> crearAlquiler(@RequestBody AlquilerRequest request) {
         Alquiler alquiler = alquilerService.crear(request.getClienteId(), request.getAutoId(), request.getCantidadDias());
-        if (traza) {
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of("resultado", alquiler, "pasos", this.traza.obtenerPasos()));
-        }
         return ResponseEntity.status(HttpStatus.CREATED).body(alquiler);
     }
 
@@ -38,12 +28,8 @@ public class AlquilerController {
     }
 
     @PutMapping("/{id}/finalizar")
-    public ResponseEntity<?> finalizarAlquiler(@PathVariable Long id,
-                                               @RequestParam(name = "traza", defaultValue = "false") boolean traza) {
-        this.traza.registrar("node-adapter-in", "AlquilerController: PUT /api/alquileres/" + id + "/finalizar recibido");
-        Alquiler alquiler = alquilerService.finalizar(id);
-        if (traza) return ResponseEntity.ok(Map.of("resultado", alquiler, "pasos", this.traza.obtenerPasos()));
-        return ResponseEntity.ok(alquiler);
+    public ResponseEntity<Alquiler> finalizarAlquiler(@PathVariable Long id) {
+        return ResponseEntity.ok(alquilerService.finalizar(id));
     }
 
     // Clase sencilla para leer el JSON del POST; no recibe valorTotal.

@@ -1,10 +1,10 @@
 # AutoRent — Sistema de alquiler de autos
 
-Proyecto de clase de **Programación Web Backend**, desarrollado en Java y Spring Boot. Permite registrar autos y clientes, crear alquileres, calcular el valor a pagar, consultar información y finalizar alquileres. Se organiza con **arquitectura hexagonal (puertos y adaptadores)** y almacena los datos en **H2**.
+Proyecto de clase de **Programación Web Backend**, desarrollado en Java y Spring Boot. Permite registrar y editar autos y clientes, cambiar manualmente un auto a mantenimiento, crear alquileres, calcular el valor a pagar, consultar información y finalizar alquileres. Se organiza con **arquitectura hexagonal (puertos y adaptadores)** y almacena los datos en **H2**.
 
 > **Integrantes:** completar con los nombres del grupo antes de entregar.  
 > **Asignatura:** Programación Web Backend.  
-> **Objetivo:** demostrar el funcionamiento de la API y explicar cómo viaja una solicitud por las capas del backend.
+> **Objetivo:** implementar las reglas de alquiler con arquitectura hexagonal y una API REST funcional.
 
 ## 1. Tecnologías utilizadas
 
@@ -16,7 +16,7 @@ Proyecto de clase de **Programación Web Backend**, desarrollado en Java y Sprin
 | Spring Data JPA | Guardar y consultar datos mediante repositorios |
 | H2 | Base de datos en memoria |
 | Maven Wrapper | Ejecutar, compilar y probar el proyecto |
-| HTML, CSS y JavaScript | Interfaz para probar la API y visualizar el flujo |
+| HTML, CSS y JavaScript | Interfaz para registrar, consultar y finalizar alquileres |
 
 La versión de Spring Boot y las dependencias se encuentran en `pom.xml`.
 
@@ -87,8 +87,12 @@ Reglas que aplica el backend:
 5. `cantidadDias` debe ser mayor que cero.
 6. `valorTotal` se calcula en el backend: **precioPorDia × cantidadDias**. No se envía en el POST.
 7. El cliente y el auto deben existir antes de crear un alquiler.
-8. Para registrar un auto se exige placa, marca, modelo, año válido y precio positivo. El nuevo auto se registra como `DISPONIBLE`.
-9. Para registrar un cliente se exige nombre, documento, email válido y documento no repetido.
+8. Para registrar un auto se exige placa, marca, modelo, año válido y precio positivo. Todo auto nuevo se registra como `DISPONIBLE`.
+9. Para registrar un cliente se exige nombre, documento y email válido.
+10. **Datos únicos:** la `placa` (autos) y el `documento` y el `email` (clientes) no se pueden repetir, **ni al registrar ni al editar**. Al editar se ignora el propio registro, de modo que se puede guardar sin cambiar esos datos. La placa y el email se comparan sin distinguir mayúsculas.
+11. **Cambio manual de estado:** un auto puede pasar de `DISPONIBLE` a `MANTENIMIENTO` y volver. Un auto `ALQUILADO` solo cambia al finalizar su alquiler, y ningún auto se puede marcar como `ALQUILADO` a mano.
+12. **Edición de autos:** no se puede editar un auto `ALQUILADO`. La edición nunca cambia el estado (cualquier `estado` enviado en el JSON se ignora).
+13. **Edición de clientes:** no se puede editar un cliente que tenga un alquiler `ACTIVO`.
 
 Al crear un alquiler, el servicio usa `LocalDate.now()` para la fecha de inicio y suma los días solicitados para la fecha de fin.
 
@@ -120,7 +124,7 @@ flowchart TD
 | `infrastructure/adapter/output/persistence/adapter` | Adaptadores que convierten modelos de dominio a entidades JPA y viceversa |
 | `infrastructure/adapter/output/persistence/entity` | Clases que JPA relaciona con las tablas |
 | `infrastructure/adapter/output/persistence/repository` | Interfaces `JpaRepository` usadas para acceder a H2 |
-| `infrastructure/config` | Configuración de servicios y registro de trazas |
+| `infrastructure/config` | Configuración de los casos de uso y sus dependencias |
 | `src/main/resources/static/index.html` | Pantalla para interactuar con los endpoints |
 
 **Diferencias que debes poder explicar:**
@@ -150,10 +154,13 @@ Así se evita la dependencia directa `UseCase → JpaRepository`, que no sería 
 | Método | Ruta | Resultado esperado |
 |---|---|---|
 | `POST` | `/api/autos` | Registrar auto como `DISPONIBLE` — HTTP `201` |
+| `PUT` | `/api/autos/{id}` | Editar datos del auto (no cambia el estado) — HTTP `200` |
+| `PUT` | `/api/autos/{id}/estado` | Cambiar manualmente a `MANTENIMIENTO` o `DISPONIBLE` — HTTP `200` |
 | `GET` | `/api/autos` | Listar todos los autos — HTTP `200` |
 | `GET` | `/api/autos/{id}` | Consultar auto — HTTP `200` o `404` |
 | `GET` | `/api/autos/disponibles` | Consultar autos disponibles — HTTP `200` |
 | `POST` | `/api/clientes` | Registrar cliente — HTTP `201` |
+| `PUT` | `/api/clientes/{id}` | Editar cliente (sin alquiler `ACTIVO`) — HTTP `200` |
 | `GET` | `/api/clientes/{id}` | Consultar cliente — HTTP `200` o `404` |
 | `POST` | `/api/alquileres` | Crear alquiler — HTTP `201` |
 | `GET` | `/api/alquileres/{id}` | Consultar alquiler — HTTP `200` o `404` |
@@ -175,7 +182,7 @@ En los POST, usar la cabecera `Content-Type: application/json` y seleccionar **B
 }
 ```
 
-Se obtiene HTTP **201 Created**, con un objeto que incluye un `id` generado, `estado: "DISPONIBLE"` y `deposito: 300000.0` (valor predeterminado si no se envía). También puedes proporcionar `deposito` en el JSON.
+Si la placa ya existe, la respuesta es **409 Conflict**. Si se registra correctamente, se obtiene HTTP **201 Created**, con un objeto que incluye un `id` generado, `estado: "DISPONIBLE"` y `deposito: 300000.0` (valor predeterminado si no se envía). También puedes proporcionar `deposito` en el JSON.
 
 ### 5.2. Registrar un cliente
 
@@ -190,7 +197,7 @@ Se obtiene HTTP **201 Created**, con un objeto que incluye un `id` generado, `es
 }
 ```
 
-Se obtiene HTTP **201 Created** y el cliente registrado con su `id`. Si registras otra vez el documento, la respuesta es **409 Conflict**.
+Se obtiene HTTP **201 Created** y el cliente registrado con su `id`. Si el documento o el email ya existen, la respuesta es **409 Conflict**.
 
 ### 5.3. Crear un alquiler
 
@@ -229,81 +236,65 @@ Las fechas son **ilustrativas**, no son fechas fijas del programa. Se calcula `1
 
 Reemplaza `1` por el ID que devolvió el POST. No necesita cuerpo JSON. La respuesta HTTP **200** devuelve el alquiler con `estado: "FINALIZADO"`, y el auto vuelve a estar `DISPONIBLE`.
 
-## 6. Recorrido completo de un POST por el backend
+### 5.5. Editar un auto
 
-Tomemos como ejemplo **POST `/api/alquileres`**:
-
-1. **Cliente HTTP:** Postman o el navegador envía un POST con un JSON que contiene `clienteId`, `autoId` y `cantidadDias`.
-2. **Spring MVC:** el `DispatcherServlet` recibe la petición y busca el método que tiene `@PostMapping` dentro de `AlquilerController`. Es parte interna de Spring: no se programó manualmente en AutoRent.
-3. **Deserialización:** Spring convierte el JSON en un objeto `AlquilerController.AlquilerRequest` mediante `@RequestBody`.
-4. **Controller:** `AlquilerController.crearAlquiler(...)` registra la entrada y llama a `AlquilerService.crear(...)`.
-5. **Puerto de entrada:** `AlquilerService` es la interfaz que define la operación. Spring le proporciona la clase `AlquilerUseCase`, que implementa esa interfaz.
-6. **Validaciones:** `AlquilerUseCase` comprueba que los IDs no sean nulos, que los días sean positivos, que el cliente exista y que el auto esté `DISPONIBLE`.
-7. **Puertos y consultas:** los puertos `ClienteRepositoryPort` y `AutoRepositoryPort` son implementados por los adaptadores de persistencia. Estos utilizan sus `JpaRepository` para consultar la información en H2.
-8. **Reglas de negocio:** el servicio calcula el valor total, asigna las fechas, crea un alquiler `ACTIVO` y cambia el auto a `ALQUILADO`.
-9. **Persistencia:** `AutoRepositoryPort.guardar(...)` y `AlquilerRepositoryPort.guardar(...)` pasan por sus adaptadores y guardan mediante JPA.
-10. **Transacción:** `@Transactional` agrupa los cambios de la operación. Si ocurre una excepción que provoca rollback, Spring revierte los cambios dentro de esa transacción, en lugar de dejar guardado solo uno.
-11. **Respuesta:** el método devuelve el objeto `Alquiler`; el Controller prepara **201 Created** y Spring lo convierte a JSON para enviarlo al cliente.
-
-**¿Dónde revisar ese flujo?**
-
-- `infrastructure/adapter/input/rest/AlquilerController.java`
-- `application/port/input/AlquilerService.java` (interfaz)
-- `application/usecase/AlquilerUseCase.java` (lógica)
-- `application/port/output/{ClienteRepositoryPort,AutoRepositoryPort,AlquilerRepositoryPort}.java`
-- `infrastructure/adapter/output/persistence/adapter/`
-- `infrastructure/adapter/output/persistence/repository/`
-
-## 7. Mostrar lo que sucede en el backend (`?traza=true`)
-
-Para la exposición, existe una opción que permite ver los pasos registrados por **las clases reales del servidor**:
-
-**POST** `http://localhost:7777/api/alquileres?traza=true`
-
-Usa el mismo JSON del apartado 5.3. Si la operación resulta exitosa, la respuesta **201** ya no contiene solo el alquiler: tiene esta estructura:
+**PUT** `http://localhost:7777/api/autos/1`
 
 ```json
 {
-  "resultado": {
-    "id": 1,
-    "clienteId": 1,
-    "autoId": 1,
-    "fechaInicio": "2026-10-22",
-    "fechaFin": "2026-10-27",
-    "cantidadDias": 5,
-    "valorTotal": 750000.0,
-    "estado": "ACTIVO"
-  },
-  "pasos": [
-    { "nodeId": "node-adapter-in", "logMsg": "AlquilerController: POST /api/alquileres recibido" },
-    { "nodeId": "node-port-in", "logMsg": "AlquilerService.crear: puerto de entrada → AlquilerUseCase" }
-  ]
+  "placa": "TOY125",
+  "marca": "Toyota",
+  "modelo": "Corolla XLI",
+  "anio": 2025,
+  "precioPorDia": 160000
 }
 ```
 
-**Ejemplo abreviado:** el arreglo `pasos` real incluye también eventos registrados durante las consultas, validaciones y guardados. Cada paso tiene un `nodeId` (capa de la animación) y un `logMsg` (explicación).
+Devuelve HTTP **200** con el auto actualizado y el mismo `estado` que tenía. Si el auto está `ALQUILADO`, responde **409**; si la placa pertenece a otro auto, **409**; si el auto no existe, **404**.
 
-- Con **`?traza=true`**: devuelve `resultado` y `pasos` cuando tiene éxito. Si el backend detecta un error, devuelve `error` y `pasos`.
-- **Sin el parámetro**: sigue devolviendo la respuesta JSON normal del endpoint; no hay que modificar Postman ni otros clientes ya existentes.
-- En la consola de Spring Boot aparecen las líneas **`[FLUJO BACKEND]`** con el recorrido registrado.
-- La interfaz web solicita la operación real y **reproduce los pasos después de recibir la respuesta**. **No es un monitoreo en vivo**: no muestra el proceso mientras la base de datos está trabajando.
+### 5.6. Cambiar el estado de un auto manualmente
 
-Los pasos se guardan en un componente `TrazaBackend` asociado a cada petición HTTP; el adaptador cumple el contrato `TrazaPort`.
+**PUT** `http://localhost:7777/api/autos/1/estado`
 
-También puedes usar `?traza=true` en `POST /api/autos`, `POST /api/clientes` y `PUT /api/alquileres/{id}/finalizar`.
+```json
+{
+  "estado": "MANTENIMIENTO"
+}
+```
 
-## 8. Validaciones y errores HTTP
+Para volver a dejarlo disponible, enviar `"estado": "DISPONIBLE"`. Solo se permiten esos dos valores: enviar `ALQUILADO` o intentar cambiar un auto que ya está `ALQUILADO` responde **409**; un valor que no existe responde **400**.
+
+### 5.7. Editar un cliente
+
+**PUT** `http://localhost:7777/api/clientes/1`
+
+```json
+{
+  "nombre": "Carlos Pérez Gómez",
+  "documento": "123456789",
+  "telefono": "3001234567",
+  "email": "carlos@email.com"
+}
+```
+
+Devuelve HTTP **200** con el cliente actualizado. Si el cliente tiene un alquiler `ACTIVO`, responde **409**; si el documento o el email pertenecen a otro cliente, **409**; si el cliente no existe, **404**.
+
+## 6. Validaciones y errores HTTP
 
 | Situación | Respuesta | Ejemplo para comprobarla |
 |---|---|---|
 | Datos inválidos | `400 Bad Request` | `cantidadDias: 0` o email incorrecto |
 | Cliente o auto inexistente en un alquiler | `404 Not Found` | `clienteId: 99999` |
 | Auto no disponible | `409 Conflict` | Crear dos alquileres seguidos para el mismo auto |
-| Cliente con documento repetido | `409 Conflict` | Volver a registrar el mismo documento |
+| Placa, documento o email repetidos (al registrar o editar) | `409 Conflict` | Volver a registrar el mismo documento, email o placa |
+| Editar un auto `ALQUILADO` | `409 Conflict` | `PUT /api/autos/5` (auto 5 de `data.sql`) |
+| Marcar un auto como `ALQUILADO` a mano, o cambiar el estado de uno `ALQUILADO` | `409 Conflict` | `PUT /api/autos/1/estado` con `"estado": "ALQUILADO"` |
+| Editar un cliente con alquiler `ACTIVO` | `409 Conflict` | Crear un alquiler para el cliente 1 y luego `PUT /api/clientes/1` |
+| Auto o cliente inexistente al editar | `404 Not Found` | `PUT /api/autos/99999` |
 | Alquiler ya finalizado | `409 Conflict` | Repetir el PUT de finalización |
 | Alquiler inexistente al finalizar | `404 Not Found` | `PUT /api/alquileres/99999/finalizar` |
 
-Los errores de operaciones de escritura son gestionados por `GlobalExceptionHandler`. Por ejemplo, sin traza:
+Los errores de operaciones de escritura son gestionados por `GlobalExceptionHandler`. Por ejemplo:
 
 ```json
 {
@@ -313,7 +304,7 @@ Los errores de operaciones de escritura son gestionados por `GlobalExceptionHand
 
 En cambio, los GET por ID del proyecto pueden responder **404 sin cuerpo JSON**, porque utilizan `ResponseEntity.notFound()`.
 
-## 9. Pruebas y evidencias para la entrega
+## 7. Pruebas y evidencias para la entrega
 
 Ejecutar pruebas automáticas desde `autorent`:
 
@@ -321,7 +312,7 @@ Ejecutar pruebas automáticas desde `autorent`:
 mvnw.cmd test
 ```
 
-Hay pruebas de casos de uso en `src/test/java`: comprueban cálculos, cambios de estado y varios errores de validación. También es necesario probar la API real en Postman o en el navegador.
+Hay pruebas de casos de uso en `src/test/java`: comprueban cálculos, cambios de estado, errores de validación y las reglas de datos únicos, edición de autos y clientes y cambio manual de estado (`ReglasNegocioUseCaseTest`). También es necesario probar la API real en Postman o en el navegador.
 
 Lista recomendada de **evidencias con capturas reales** (en este orden):
 
@@ -334,16 +325,18 @@ Lista recomendada de **evidencias con capturas reales** (en este orden):
 - [ ] Finalización de alquiler y auto de nuevo `DISPONIBLE`.
 - [ ] Segundo intento de finalizar: HTTP `409`.
 - [ ] Ejemplo de HTTP `400` por días inválidos.
+- [ ] Registro de una placa o un email repetido: HTTP `409`.
+- [ ] Cambio de un auto a `MANTENIMIENTO` y de regreso a `DISPONIBLE`.
+- [ ] Intento de editar un auto `ALQUILADO` y un cliente con alquiler `ACTIVO`: HTTP `409`.
 - [ ] Consulta de tablas desde la consola H2.
-- [ ] Traza de un POST en la respuesta y en la consola Spring Boot.
 - [ ] Diagrama hexagonal de este README y explicación de sus capas.
 
 El enunciado del profesor solicita entregar **código fuente, configuración funcional de H2, README, evidencias y diagrama de arquitectura**. El diagrama está incluido en este archivo mediante Mermaid (se visualiza en visores Markdown compatibles); si se pide como imagen independiente, se puede exportar a partir de él.
 
-## 10. Notas importantes
+## 8. Notas importantes
 
 - La aplicación es un **proyecto educativo**, no un sistema de alquiler listo para producción.
-- La interfaz es una herramienta de demostración; para comprobar la lógica utiliza también Postman, los logs y H2.
+- Para comprobar la lógica utiliza también Postman y la consola de H2.
 - Los importes permanecen como `Double` para seguir el nivel y el código original. Una aplicación financiera real suele utilizar `BigDecimal`.
 - `@Transactional` ayuda a mantener juntos los cambios de una operación, pero por sí solo **no resuelve alquileres simultáneos del mismo auto** desde dos peticiones concurrentes.
 - Si el navegador no responde, revisa que Spring Boot siga ejecutándose y que estés utilizando el **puerto 7777**.

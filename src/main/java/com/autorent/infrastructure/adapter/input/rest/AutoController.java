@@ -1,35 +1,37 @@
 package com.autorent.infrastructure.adapter.input.rest;
 
 import com.autorent.application.port.input.AutoService;
-import com.autorent.application.port.output.TrazaPort;
 import com.autorent.domain.model.Auto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/autos")
 public class AutoController {
     private final AutoService autoService;
-    private final TrazaPort traza;
 
-    public AutoController(AutoService autoService, TrazaPort traza) {
+    public AutoController(AutoService autoService) {
         this.autoService = autoService;
-        this.traza = traza;
     }
 
     @PostMapping
-    public ResponseEntity<?> crearAuto(@RequestBody Auto auto,
-                                        @RequestParam(name = "traza", defaultValue = "false") boolean traza) {
-        this.traza.registrar("node-adapter-in", "AutoController: POST /api/autos recibido");
+    public ResponseEntity<Auto> crearAuto(@RequestBody Auto auto) {
         Auto nuevoAuto = autoService.registrar(auto);
-        if (traza) {
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of("resultado", nuevoAuto, "pasos", this.traza.obtenerPasos()));
-        }
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevoAuto);
+    }
+
+    // Edita datos del auto (no cambia el estado; no permitido si está ALQUILADO).
+    @PutMapping("/{id}")
+    public ResponseEntity<Auto> actualizarAuto(@PathVariable Long id, @RequestBody Auto auto) {
+        return ResponseEntity.ok(autoService.actualizar(id, auto));
+    }
+
+    // Cambio manual de estado: solo DISPONIBLE <-> MANTENIMIENTO.
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<Auto> cambiarEstado(@PathVariable Long id, @RequestBody EstadoRequest request) {
+        return ResponseEntity.ok(autoService.cambiarEstado(id, request.getEstado()));
     }
 
     @GetMapping("/{id}")
@@ -46,5 +48,13 @@ public class AutoController {
     @GetMapping
     public ResponseEntity<List<Auto>> consultarTodos() {
         return ResponseEntity.ok(autoService.buscarTodos());
+    }
+
+    // Clase sencilla para leer el JSON del cambio de estado: {"estado": "MANTENIMIENTO"}
+    public static class EstadoRequest {
+        private Auto.EstadoAuto estado;
+
+        public Auto.EstadoAuto getEstado() { return estado; }
+        public void setEstado(Auto.EstadoAuto estado) { this.estado = estado; }
     }
 }
