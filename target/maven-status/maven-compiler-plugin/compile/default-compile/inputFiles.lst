@@ -1,11 +1,9 @@
-C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\PasoTraza.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\port\input\AlquilerService.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\port\input\AutoService.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\port\input\ClienteService.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\port\output\AlquilerRepositoryPort.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\port\output\AutoRepositoryPort.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\port\output\ClienteRepositoryPort.java
-C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\port\output\TrazaPort.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\usecase\AlquilerUseCase.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\usecase\AutoUseCase.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\application\usecase\ClienteUseCase.java
@@ -31,4 +29,3 @@ C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\infrastru
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\infrastructure\adapter\output\persistence\repository\AutoJpaRepository.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\infrastructure\adapter\output\persistence\repository\ClienteJpaRepository.java
 C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\infrastructure\config\BeanConfiguration.java
-C:\Users\ESTUDIANTE - 21\Downloads\autorent\src\main\java\com\autorent\infrastructure\config\TrazaBackend.java

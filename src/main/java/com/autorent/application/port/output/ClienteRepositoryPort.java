@@ -6,5 +6,6 @@ import java.util.Optional;
 public interface ClienteRepositoryPort {
     Cliente guardar(Cliente cliente);
     Optional<Cliente> buscarPorId(Long id);
-    boolean existePorDocumento(String documento);
+    Optional<Cliente> buscarPorDocumento(String documento);
+    Optional<Cliente> buscarPorEmail(String email);
 }

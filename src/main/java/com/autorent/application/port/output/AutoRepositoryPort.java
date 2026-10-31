@@ -7,6 +7,7 @@ import java.util.Optional;
 public interface AutoRepositoryPort {
     Auto guardar(Auto auto);
     Optional<Auto> buscarPorId(Long id);
+    Optional<Auto> buscarPorPlaca(String placa);
     List<Auto> buscarDisponibles();
     List<Auto> buscarTodos();
 }

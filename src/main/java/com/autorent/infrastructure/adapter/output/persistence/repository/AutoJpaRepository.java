@@ -5,9 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AutoJpaRepository extends JpaRepository<AutoEntity, Long> {
     // Spring Data JPA crea esta consulta automáticamente
     List<AutoEntity> findByEstado(AutoEntity.EstadoAutoEntity estado);
+
+    Optional<AutoEntity> findByPlacaIgnoreCase(String placa);
 }
